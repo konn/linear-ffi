@@ -21,6 +21,7 @@ jobs:
       with:
         ghc-version: ${{env.ghc}}
         cabal-version: ${{env.cabal}}
+        cabal-update: true
         enable-stack: false
     - name: Calculate Cache Keys
       id: cache-keys
