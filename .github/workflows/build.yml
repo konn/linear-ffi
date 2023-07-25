@@ -1,0 +1,93 @@
+name: Build and Test
+
+on: 
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build:
+    env:
+      os: ubuntu
+      ghc: 9.4.5
+      cabal: 3.10.1.0
+    name: Build
+    runs-on: ubuntu-22.04
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+    - name: Setup Haskell
+      uses: haskell/actions/setup@v2
+      with:
+        ghc-version: ${{env.ghc}}
+        cabal-version: ${{env.cabal}}
+        enable-stack: false
+    - name: Calculate Cache Keys
+      id: cache-keys
+      shell: bash
+      run: |      
+        PROJECT_HASH=${{hashFiles('cabal.project', 'cabal.project.freeze')}}
+        echo "PROJECT_HASH=${PROJECT_HASH}" >> "${GITHUB_ENV}"
+        echo "project-hash=${PROJECT_HASH}" >> "${GITHUB_OUTPUT}"
+
+        PACKAGE_HASH=${{hashFiles('**/package.yaml', '**/*.cabal')}}
+        echo "PACKAGE_HASH=${PACKAGE_HASH}" >> "${GITHUB_ENV}"
+        echo "package-hash=${PACKAGE_HASH}" >> "${GITHUB_OUTPUT}"
+
+        SOURCE_HASH=${{hashFiles('**/*.hs', '**/*.lhs', '**/*.hs-boot', '**/*.hsig', '**/*.hsc', '**/*.c', '**/*.h', '**/*.cpp', '**/*.hpp')}}
+        echo "SOURCE_HASH=${SOURCE_HASH}" >> "${GITHUB_ENV}"
+        echo "source-hash=${SOURCE_HASH}" >> "${GITHUB_OUTPUT}"
+
+        CABAL_STORE_KEY_PREFIX=cabal-store-${{env.os}}-${{env.ghc}}
+        echo "CABAL_STORE_KEY_PREFIX=${CABAL_STORE_KEY_PREFIX}" >> "${GITHUB_ENV}"
+        echo "cabal-store-key-previx=${CABAL_STORE_KEY_PREFIX}" >> "${GITHUB_OUTPUT}"
+
+        CABAL_STORE_KEY=${CABAL_STORE_KEY_PREFIX}-${PROJECT_HASH}-${PACKAGE_HASH}
+        echo "CABAL_STORE_KEY=${CABAL_STORE_KEY}" >> "${GITHUB_ENV}"
+        echo "cabal-store-key=${CABAL_STORE_KEY}" >> "${GITHUB_OUTPUT}"
+
+        DIST_KEY_PREFIX=dist-newstyle-${{env.os}}-${{env.ghc}}
+        echo "DIST_KEY_PREFIX=${DIST_KEY_PREFIX}" >> "${GITHUB_ENV}"
+        echo "dist-key-prefix=${DIST_KEY_PREFIX}" >> "${GITHUB_OUTPUT}"
+
+        DIST_KEY=${DIST_KEY_PREFIX}-${PROJECT_HASH}-${PACKAGE_HASH}-${SOURCE_HASH}
+        echo "DIST_KEY=${DIST_KEY}" >> "${GITHUB_ENV}"
+        echo "dist-key=${DIST_KEY}" >> "${GITHUB_OUTPUT}"
+
+    - name: Restore ~/.cabal/store Cache
+      uses: actions/cache/restore@v3
+      with:
+        path: ~/.cabal/store
+        key: ${{steps.cache-keys.outputs.cabal-store-key}}
+        restore-keys: |
+          ${{steps.cache-keys.outputs.cabal-store-key-prefix}}-${{steps.cache-keys.outputs.project-hash}}-
+          ${{steps.cache-keys.outputs.cabal-store-key}}-
+
+    - name: Restore dist-newstyle Cache
+      uses: actions/cache/restore@v3
+      with:
+        path: ~/.cabal/store
+        key: ${{steps.cache-keys.outputs.dist-key}}
+        restore-keys: |
+          ${{steps.cache-keys.outputs.dist-key-prefix}}-${{steps.cache-keys.outputs.project-hash}}-${{steps.cache-keys.outputs.package-hash}}-
+          ${{steps.cache-keys.outputs.dist-key-prefix}}-${{steps.cache-keys.outputs.project-hash}}-
+          ${{steps.cache-keys.outputs.dist-key-prefix}}-
+
+    - name: Build Dependencies
+      run: cabal build all --only-dependencies --enable-tests --enable-benchmarks
+      
+    - name: Save ~/.cabal/store Cache
+      uses: actions/cache/save@v3
+      with:
+        key: ${{steps.cache-keys.outputs.cabal-store-key}}
+        path: ~/.cabal/store
+        
+    - name: Build Local Targets
+      run: cabal build all --enable-tests --enable-benchmarks
+
+    - name: Save dist-newstyle Cache
+      uses: actions/cache/save@v3
+      with:
+        key: ${{steps.cache-keys.outputs.dist-key}}
+        path: dist-newstyle
+        
