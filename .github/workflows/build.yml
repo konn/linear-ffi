@@ -41,7 +41,7 @@ jobs:
 
         CABAL_STORE_KEY_PREFIX=cabal-store-${{env.os}}-${{env.ghc}}
         echo "CABAL_STORE_KEY_PREFIX=${CABAL_STORE_KEY_PREFIX}" >> "${GITHUB_ENV}"
-        echo "cabal-store-key-previx=${CABAL_STORE_KEY_PREFIX}" >> "${GITHUB_OUTPUT}"
+        echo "cabal-store-key-prefix=${CABAL_STORE_KEY_PREFIX}" >> "${GITHUB_OUTPUT}"
 
         CABAL_STORE_KEY=${CABAL_STORE_KEY_PREFIX}-${PROJECT_HASH}-${PACKAGE_HASH}
         echo "CABAL_STORE_KEY=${CABAL_STORE_KEY}" >> "${GITHUB_ENV}"
@@ -62,7 +62,7 @@ jobs:
         key: ${{steps.cache-keys.outputs.cabal-store-key}}
         restore-keys: |
           ${{steps.cache-keys.outputs.cabal-store-key-prefix}}-${{steps.cache-keys.outputs.project-hash}}-
-          ${{steps.cache-keys.outputs.cabal-store-key}}-
+          ${{steps.cache-keys.outputs.cabal-store-key-prefix}}-
 
     - name: Restore dist-newstyle Cache
       uses: actions/cache/restore@v3
