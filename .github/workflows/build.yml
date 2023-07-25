@@ -74,6 +74,9 @@ jobs:
           ${{steps.cache-keys.outputs.dist-key-prefix}}-${{steps.cache-keys.outputs.project-hash}}-
           ${{steps.cache-keys.outputs.dist-key-prefix}}-
 
+    - name: Cabal update
+      run: cabal update
+
     - name: Build Dependencies
       run: cabal build all --only-dependencies --enable-tests --enable-benchmarks
       
